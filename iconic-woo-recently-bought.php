@@ -86,7 +86,7 @@ class Iconic_WooCommerce_Recently_Bought {
      */
     public function textdomain() {
 
-        load_plugin_textdomain( 'iconic-was', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
+        load_plugin_textdomain( 'iconic-woo-recently-bought', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
 
     }
 
