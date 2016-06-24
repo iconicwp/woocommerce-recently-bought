@@ -110,7 +110,139 @@ class Iconic_WooCommerce_Recently_Bought {
 
         } else {
 
+            $this->get_recent_product_purchases();
+
         }
+
+    }
+
+    /**
+     * Get recent product purchases
+     *
+     * @param int $limit
+     * @return array
+     */
+    public function get_recent_product_purchases( $limit = 5 ) {
+
+        $products = array();
+
+        $line_items = $this->get_line_items( $limit );
+
+        if( empty( $line_items ) )
+            return $products;
+
+        foreach( $line_items as $line_item ) {
+
+            $product_info = $this->get_product_info( $line_item->order_item_id );
+            $order_info = $this->get_order_info( $line_item->order_id );
+
+            if( !$product_info || !$order_info )
+                continue;
+
+            $products[] = array_merge( $product_info, $order_info );
+
+        }
+
+        error_log( print_r( $products, true ) );
+
+        return $products;
+
+    }
+
+    /**
+     * Get line items
+     *
+     * @param int $limit
+     * @return array
+     */
+    public function get_line_items( $limit ) {
+
+        global $wpdb;
+
+        $line_items = $wpdb->get_results( $wpdb->prepare("
+            SELECT *
+            FROM {$wpdb->prefix}woocommerce_order_items
+            WHERE order_item_type = 'line_item'
+            GROUP BY order_id
+            LIMIT %d",
+            $limit
+        ), OBJECT );
+
+        return $line_items;
+
+    }
+
+    /**
+     * Get product by order item ID
+     *
+     * @param int $order_item_id
+     * @return bool|obj
+     */
+    public function get_product_by_order_item_id( $order_item_id ) {
+
+        global $wpdb;
+
+        $product_id = $wpdb->get_var( $wpdb->prepare("
+            SELECT meta_value
+            FROM {$wpdb->prefix}woocommerce_order_itemmeta
+            WHERE order_item_id = %d
+            AND meta_key = '_product_id'",
+            $order_item_id
+        ) );
+
+        if( !$product_id )
+            return false;
+
+        $product = wc_get_product( $product_id );
+
+        return $product;
+
+    }
+
+    /**
+     * Get product info by ID
+     *
+     * @param int $product_id
+     * @retrun bool|array
+     */
+    public function get_product_info( $product_id ) {
+
+        $product = $this->get_product_by_order_item_id( $product_id );
+
+        if( !$product )
+            return false;
+
+        return array(
+            'product_name' => $product->get_title(),
+            'product_url'  => $product->get_permalink(),
+            'product_image' => $product->get_image('shop_thumbnail'),
+        );
+
+    }
+
+    /**
+     * Get order info by ID
+     *
+     * @param int $order_id
+     * @return bool|array
+     */
+    public function get_order_info( $order_id ) {
+
+        $customer_name = get_post_meta( $order_id, '_billing_first_name', true );
+        $customer_city = get_post_meta( $order_id, '_billing_city', true );
+        $customer_country = get_post_meta( $order_id, '_billing_country', true );
+        $location = array();
+
+        if( !$customer_name || !$customer_city || !$customer_country )
+            return false;
+
+        if( $customer_city ) { $location[] = $customer_city; }
+        if( $customer_country ) { $location[] = $customer_country; }
+
+        return array(
+            'customer_name' => $customer_name,
+            'customer_location' => implode(', ', $location)
+        );
 
     }
 
